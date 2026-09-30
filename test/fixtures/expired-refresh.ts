@@ -32,7 +32,7 @@ globalThis.fetch = async (url) => {
 const pi = {
 	registerFlag() {},
 	getFlag: (name: string) => name === "usage-widget",
-	on: (event: string, handler: unknown) => { handlers.set(event, handler); },
+	on: (event: string, handler: unknown) => { handlers.set(event, handler); return () => { handlers.delete(event); }; },
 	registerCommand: (_name, options) => { command = options.handler; },
 } satisfies Pick<ExtensionAPI, "registerFlag" | "getFlag" | "on" | "registerCommand">;
 usageExtension(pi as unknown as ExtensionAPI);

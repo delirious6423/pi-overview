@@ -188,7 +188,13 @@ function probeRefreshIsAuthoritative(result: { status: string }): boolean {
 
 // ───────── Extension ─────────
 
-export default function (pi: ExtensionAPI) {
+export interface MonitorOptions {
+ commandName?: string;
+ silent?: boolean;
+}
+
+export default function (pi: ExtensionAPI, options: MonitorOptions = {}) {
+ const listeners = new Set<() => void>();
 	pi.registerFlag(USAGE_WIDGET_FLAG, {
 		description: "Display pi-usage as a persistent widget above the editor",
 		type: "boolean",
@@ -292,6 +298,7 @@ export default function (pi: ExtensionAPI) {
 	function renderCachedUsage(ctx: UsageContext, loading = false): void {
 		if (!ctx.hasUI) return;
 		const snapshot = currentSnapshot();
+		for (const listener of listeners) listener();
 		if (isUsageWidgetEnabled(ctx)) {
 			ctx.ui.setWidget(WIDGET_ID, buildUsageWidget(snapshot, ctx.ui.theme, loading));
 		} else {
@@ -360,7 +367,7 @@ export default function (pi: ExtensionAPI) {
 
 		try {
 			const showWidget = isUsageWidgetEnabled(ctx);
-			const showStartupReport = !showWidget && trigger !== "auto";
+			const showStartupReport = !options.silent && !showWidget && trigger !== "auto";
 			widgetLoading = showWidget && trigger !== "auto";
 
 			// Show loading state for user-triggered checks; keep cached values during auto refresh.
@@ -557,13 +564,14 @@ export default function (pi: ExtensionAPI) {
 			if (refreshTimedOut && trigger !== "auto") {
 				ctx.ui.notify("Some usage checks timed out", "warning");
 			}
-			if (!isUsageWidgetEnabled(ctx) && trigger !== "auto") {
+			if (!options.silent && !isUsageWidgetEnabled(ctx) && trigger !== "auto") {
 				ctx.ui.notify(buildStartupUsageMessage(currentSnapshot(), true), "info");
 			}
 		} finally {
 			if (refreshController === controller) refreshController = undefined;
 			widgetLoading = false;
 			isLoading = false;
+			if (generation === sessionGeneration) renderCachedUsage(ctx, false);
 		}
 	}
 
@@ -740,10 +748,20 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// ── /usage command ──
-	pi.registerCommand("usage", {
+	pi.registerCommand(options.commandName ?? "usage", {
 		description: "Refresh usage limits for Codex, Anthropic, Copilot, OpenCode, and compatible providers, plus OpenRouter spend, budgets, and credits",
 		handler: async (_args, ctx) => {
 			await refreshUsage(ctx, "manual");
 		},
 	});
+ return {
+  snapshot: currentSnapshot,
+  isRefreshing: () => isLoading,
+  refresh: (ctx: UsageContext) => refreshUsage(ctx, "manual"),
+  subscribe: (listener: () => void) => {
+   listeners.add(listener);
+   return () => { listeners.delete(listener); };
+  },
+ };
+
 }
