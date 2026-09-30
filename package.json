@@ -1,6 +1,6 @@
 {
   "name": "pi-overview",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "One terminal screen for Pi usage history, cache statistics, and live subscription quotas.",
   "license": "MIT",
   "author": "timm-u and Micha\u0142 Trojnara",

@@ -18,7 +18,8 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { AnthropicUsage, CodexUsage, CopilotUsage, OpenCodeGoUsage, OpenRouterUsage, RefreshTrigger, SubscriptionUsage, UsageContext, UsageSnapshot } from "./src/types.ts";
+import type { AnthropicUsage, ChatGPTSubscriptionUsage, CodexUsage, CopilotUsage, OpenCodeGoUsage, OpenRouterUsage, RefreshTrigger, SubscriptionUsage, UsageContext, UsageSnapshot } from "./src/types.ts";
+import { CHATGPT_PROVIDER, getChatGPTSubscription, updateChatGPTRequestStatus } from "./src/chatgpt.ts";
 import {
 	ANTHROPIC_PROVIDER,
 	AUTO_REFRESH_MINUTES,
@@ -208,6 +209,7 @@ export default function (pi: ExtensionAPI, options: MonitorOptions = {}) {
 
 	// Cached usage per provider.
 	let codexUsage: CodexUsage | undefined;
+	let chatgptUsage: ChatGPTSubscriptionUsage | undefined;
 	let anthropicUsage: AnthropicUsage | undefined;
 	let copilotUsage: CopilotUsage | undefined;
 	let goUsage: OpenCodeGoUsage | undefined;
@@ -286,6 +288,7 @@ export default function (pi: ExtensionAPI, options: MonitorOptions = {}) {
 
 	function currentSnapshot(): UsageSnapshot {
 		return {
+			chatgpt: chatgptUsage,
 			codex: codexUsage,
 			openrouter: openrouterUsage,
 			anthropic: anthropicUsage,
@@ -421,6 +424,15 @@ export default function (pi: ExtensionAPI, options: MonitorOptions = {}) {
 			// Prefer probing the currently selected model so reported limits match its tier.
 			const selected = ctx.model;
 			const preferredFor = (provider: string) => selected?.provider === provider ? selected : undefined;
+
+			// Pi 0.99's direct ChatGPT plan login has a separate public-API credential.
+			// Recognize it without sending that token to legacy Codex quota endpoints.
+			runCheck<ChatGPTSubscriptionUsage>(
+				CHATGPT_PROVIDER, async () => getChatGPTSubscription(), () => chatgptUsage,
+				["connection", "quotaAvailable", "manageUrl"],
+				(result) => { chatgptUsage = result; }, () => true,
+				undefined, () => { chatgptUsage = undefined; },
+			);
 
 			// Check Codex; activity scheduler or recent passive headers defer auto probes.
 			const skipCodexCheck = trigger === "auto"
@@ -698,6 +710,14 @@ export default function (pi: ExtensionAPI, options: MonitorOptions = {}) {
 
 	// ── Mark Codex activity; refresh usage at most once per activity window ──
 	pi.on("message_end", (event, ctx) => {
+		if (ctx.hasUI && chatgptUsage) {
+			const updated = updateChatGPTRequestStatus(chatgptUsage, event.message);
+			if (updated !== chatgptUsage) {
+				chatgptUsage = updated;
+				markPassiveUpdate(CHATGPT_PROVIDER);
+				renderCachedUsage(ctx, false);
+			}
+		}
 		if (!ctx.hasUI || !CODEX_RESPONSE_REFRESH_ENABLED) return;
 		if (isCodexResponseWithUsageData(event.message)) codexResponseDataTransferred = true;
 	});

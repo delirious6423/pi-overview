@@ -9,3 +9,5 @@ This is a combined derivative under MIT. Original notices are preserved in LICEN
 Integration changes: exported a quota snapshot/refresh/subscription controller; made its command name and notifications configurable; exported the history component and its period/data updates; defaulted history to tables; added one combined panel with scrolling, cache read/write statistics, refresh and cleanup; updated test mocks for Pi 0.99.1 event unsubscription.
 
 GitHub associates a fork with one parent. pi-overview uses the quota repository as that parent and vendors only the history extension from the second repository. Updating either source is an explicit reviewed import, not an automatic dependency update.
+
+Version 0.1.1 adds separate Pi 0.99 `openai` ChatGPT subscription detection, metadata-only connection state, explicit unavailable quota fields, the official usage settings link, and passive handling of subscription-specific errors. Direct-login tokens are not reused at Codex endpoints.

@@ -57,6 +57,7 @@ export interface CodexOAuthCredential {
 	refresh?: string;
 	expires?: number;
 	accountId?: string;
+	scopes?: string[];
 }
 
 export interface CopilotOAuthCredential extends CodexOAuthCredential {
@@ -217,7 +218,15 @@ export interface OpenRouterUsage {
 }
 
 /** Cached usage of every provider, as consumed by the report/widget/footer renderers. */
+export interface ChatGPTSubscriptionUsage {
+	connection: "signed_in" | "refresh_needed" | "plan_disabled";
+	quotaAvailable: false;
+	manageUrl: string;
+	lastRequest?: "succeeded" | "limit_reached" | "unavailable";
+}
+
 export interface UsageSnapshot {
+	chatgpt?: ChatGPTSubscriptionUsage;
 	openrouter?: OpenRouterUsage;
 	codex?: CodexUsage;
 	anthropic?: AnthropicUsage;

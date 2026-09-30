@@ -330,6 +330,15 @@ function buildUsageReportLines(snapshot: UsageSnapshot, opts: UsageReportOptions
 	const lines: string[] = [];
 
 	lines.push(bold(fmt("accent", "⚡ Usage Limits")));
+	if (snapshot.chatgpt) {
+		const usage = snapshot.chatgpt;
+		const status = usage.connection === "signed_in" ? "signed in with ChatGPT" : usage.connection === "refresh_needed" ? "token refresh needed" : "plan-use permission disabled";
+		lines.push(...sectionLines(fmt, "ChatGPT plan", "accent", `— ${status}`));
+		lines.push(`  ${fmt("dim", "Remaining percentage, reset time, and plan tier: unavailable in this integration")}`);
+		if (usage.lastRequest) lines.push(`  ${fmt(usage.lastRequest === "limit_reached" ? "warning" : "dim", `Last plan request: ${usage.lastRequest.replaceAll("_", " ")}`)}`);
+		if (usage.connection === "refresh_needed") lines.push(`  ${fmt("dim", "Pi refreshes during normal model use; reopen /overview afterward.")}`);
+		lines.push(`  ${fmt("dim", `Manage usage: ${usage.manageUrl}`)}`);
+	}
 
 	if (snapshot.codex) lines.push(...renderCodexWindows(snapshot.codex, fmt, useColor));
 	if (snapshot.anthropic) lines.push(...renderAnthropicWindows(snapshot.anthropic, fmt, useColor));
@@ -434,6 +443,13 @@ export function updateFooterStatus(ctx: UsageContext, snapshot: UsageSnapshot): 
 	const addPart = (label: string, limited: boolean, summary: string) => {
 		parts.push(`${dim(`${label}${limited ? " limited" : ""}:`)}${summary}`);
 	};
+	if (snapshot.chatgpt) {
+		const usage = snapshot.chatgpt;
+		const summary = usage.lastRequest === "limit_reached" ? "limit reached; quota n/a"
+			: usage.connection === "refresh_needed" ? "refresh needed; quota n/a"
+				: usage.connection === "plan_disabled" ? "plan disabled; quota n/a" : "signed in; quota n/a";
+		addPart("ChatGPT", usage.lastRequest === "limit_reached", theme.fg("dim", summary));
+	}
 
 	if (codexUsageHasData(codex)) {
 		const limited = codex.rateLimited;

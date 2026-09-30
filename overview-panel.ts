@@ -50,7 +50,7 @@ export class OverviewPanel {
   const totals = this.options.data[this.history.period].totals;
   const current = snapshot();
   const quotas = buildUsageWidget(current, theme, loading());
-  if (!current.codex && !current.anthropic && !current.copilot && !current.go && !current.openrouter && current.subscriptions.length === 0) {
+  if (!current.chatgpt && !current.codex && !current.anthropic && !current.copilot && !current.go && !current.openrouter && current.subscriptions.length === 0) {
    quotas.push(theme.fg("dim", loading() ? "Checking configured accounts…" : "No account quota data. Sign in with /login or configure a supported provider."));
   }
   const content = [
